@@ -13,10 +13,17 @@ const main = () => {
     let vless = new VLESS(ws)
 
     ws.on('message', (data) => {
-      if (!vless.started) {
-        vless.start(data)
-      } else {
-        vless.continue(data)
+      console.log('[WEBSOCKET/DEBUG] Data received, length:', data.length);
+      console.log('[WEBSOCKET/DEBUG] Is Buffer?', Buffer.isBuffer(data));
+      
+      try {
+        if (!vless.started) {
+          vless.start(data)
+        } else {
+          vless.continue(data)
+        }
+      } catch (e) {
+        console.error('[WEBSOCKET/CRITICAL]:', err.message);
       }
     });
     
