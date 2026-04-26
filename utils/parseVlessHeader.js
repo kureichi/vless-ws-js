@@ -2,33 +2,27 @@
 export function parseVlessHeader(buffer) {
   const data = new Uint8Array(buffer);
   
-  // 1. Ambil Version & UUID (16 byte setelah byte pertama)
   const version = data[0];
-  // UUID ada di index 1 sampai 16
+  // btw UUID ada di index 1 sampai 16 tapi emang sengaja gk diambil
   
-  // 2. Lewati Add-on (Byte 17)
   const addonLength = data[17];
-  
-  // 3. Ambil Command (TCP/UDP) di gerbong setelah Add-on
-  // Biasanya index ke-18 jika addonLength = 0
   const command = data[18 + addonLength]; 
 
-  // 4. Ambil Port (Byte ke-19 dan 20)
-  // Port menggunakan 16-bit integer (2 byte)
+  // port menggunakan 16-bit integer (2 byte, index ke 19 dan 20)
   const port = (data[19 + addonLength] << 8) | data[20 + addonLength];
 
-  // 5. Tentukan Tipe Alamat (Byte ke-21)
+  // ini address type bisa ipv4/6 bisa domain
   const addressType = data[21 + addonLength];
+
   let address = "";
   let addressEndIndex = 22 + addonLength;
-
   if (addressType === 1) {
-    // Tipe IPv4: Ambil 4 byte berikutnya
+    // tipe ipv4, ambil 4 byte berikutnya
     address = data.slice(addressEndIndex, addressEndIndex + 4).join('.');
     addressEndIndex += 4;
   } 
   else if (addressType === 2) {
-    // Tipe Domain: Byte pertama adalah panjang domainnya
+    // tipe domain, byte pertama adalah panjang domainnya
     const domainLength = data[addressEndIndex];
     addressEndIndex += 1; // Maju ke awal string domain
     address = new TextDecoder().decode(
@@ -37,13 +31,15 @@ export function parseVlessHeader(buffer) {
     addressEndIndex += domainLength;
   } 
   else if (addressType === 3) {
-    // Tipe IPv6: Ambil 16 byte berikutnya
-    // (Logikanya lebih kompleks, biasanya dikonversi ke format hex colons)
+    // tipe ipv6, ambil 16 byte berikutnya
+    // karena males jadi gk implementasiin buat ipv6
     addressEndIndex += 16;
   }
 
+  // ambil payload dari sisa data
   let payload = null
   if (command === 2) {
+    // pengecualian buat udp karena payload harus diambil dari index ke 3 dari sisa data
     payload = data.slice(addressEndIndex + 2)
   } else if (command === 1) {
     payload = data.slice(addressEndIndex)
@@ -54,7 +50,6 @@ export function parseVlessHeader(buffer) {
     command,
     port,
     address,
-    // Sisa data setelah header ini adalah data asli milik user (payload)
     payload
   };
 }
