@@ -1,12 +1,12 @@
 
 export function parseVlessHeader(buffer) {
   const data = new Uint8Array(buffer);
-  
+
   const version = data[0];
   // btw UUID ada di index 1 sampai 16 tapi emang sengaja gk diambil
-  
+
   const addonLength = data[17];
-  const command = data[18 + addonLength]; 
+  const command = data[18 + addonLength];
 
   // port menggunakan 16-bit integer (2 byte, index ke 19 dan 20)
   const port = (data[19 + addonLength] << 8) | data[20 + addonLength];
@@ -20,7 +20,7 @@ export function parseVlessHeader(buffer) {
     // tipe ipv4, ambil 4 byte berikutnya
     address = data.slice(addressEndIndex, addressEndIndex + 4).join('.');
     addressEndIndex += 4;
-  } 
+  }
   else if (addressType === 2) {
     // tipe domain, byte pertama adalah panjang domainnya
     const domainLength = data[addressEndIndex];
@@ -29,10 +29,9 @@ export function parseVlessHeader(buffer) {
       data.slice(addressEndIndex, addressEndIndex + domainLength)
     );
     addressEndIndex += domainLength;
-  } 
+  }
   else if (addressType === 3) {
-    // tipe ipv6, ambil 16 byte berikutnya
-    // karena males jadi gk implementasiin buat ipv6
+    address = data.slice(addressEndIndex, addressEndIndex + 16).join('.');
     addressEndIndex += 16;
   }
 

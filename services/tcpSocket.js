@@ -1,37 +1,34 @@
 import net from 'net'
 
 export class TCPSocket {
-  constructor({ address, port, payload }) {
-    this.connected = false
-    this.remoteSocket = null
-    this.address = address
-    this.port = port
-
-    console.log('[TCPSOCKET] Socket Created')
-    this.remoteSocket = net.connect(port, address, () => {
-      this.connected = true
-      console.log('[TCPSOCKET] Connected to ' + address)
-
-      this.write(payload)
-    })
+  constructor(logger) {
+    this.logger = logger
   }
-  
-  write(payload) {
-    if (!this.remoteSocket) return
-    this.remoteSocket.write(payload)
-    console.log('[TCPSOCKET] Writed payload to ' + this.address)
-  }
-  
-  relay(server) {
-    if (!this.remoteSocket) return
-    
-    this.remoteSocket.on('data', (chunk) => {
-      console.log('[TCPSOCKET] Relayed packet from ' + this.address)
-      server.send(chunk)
+
+  createSocket({ address, port, client }) {
+    const socket = net.connect(port, address, () => {
+      this.logger.info(`Socket connected to ${address}:${port}`)
     })
-    this.remoteSocket.on('error', (error) => {
-      console.log('[TCPSOCKET/ERROR] ' + error.message)
-      server.close()
+
+    socket.on('data', (chunk) => {
+      this.logger.info(`Relay packet (${chunk.length} Bytes) from ${address}:${port} to client`)
+      client.send(chunk)
     })
+    socket.on('error', (error) => {
+      this.logger.error(`Error from ${address}:${port}:  ${error.message}`)
+      client.close()
+    })
+
+    const send = (payload) => {
+      this.logger.info(`Send packet (${payload.length} Bytes) to ${address}:${port}`)
+
+      if (payload?.length) {
+        socket.write(payload)
+      }
+    }
+
+    return {
+      send
+    }
   }
 }
