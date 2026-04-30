@@ -1,56 +1,61 @@
-import { TCPSocket } from "../services/tcpSocket.js"
-import { UDPSocket } from "../services/udpSocket.js"
 import { parseVlessHeader } from "../utils/index.js"
 
 export class VLESS {
-  constructor(server) {
-    this.version = null
-    this.command = null
-    this.address = null
-    this.port = null
-    this.payload = null
-    this.socket = null
-    this.server = server
-    
+  constructor(client, logger, { udpSocket, tcpSocket }) {
+    this.tcpSocket = tcpSocket
+    this.udpSocket = udpSocket
+    this.currentSocket = null
+    this.logger = logger
+
+    this.opts = {}
     this.started = false
+    this.client = client
   }
-  
-  parse(data) {
+
+  async respond(data) {
+    if (this.started) {
+      this.sendToCurrentSocket(data)
+      return
+    }
+    this.started = true
+
     const { version, command, address, port, payload } = parseVlessHeader(data);
-    this.version = version
-    this.command = command
-    this.address = address
-    this.port = port
-    this.payload = payload
-  }
-  
-  start(data) {
-    this.parse(data) 
-    console.log(`[VLESS/INIT] ${this.command === 1 ? 'TCP': this.command == 2 ? 'UDP':''} ${this.address} ${this.port}`)
-    
-    this.server.send(new Uint8Array([this.version, 0]))
+    const commandStr = command === 1 ? 'TCP' : command == 2 ? 'UDP' : ''
+    this.logger.info(`New request packet (${payload ? payload.length : 0} bytes) to ${address}:${port} with command ${command}`)
+
+    this.opts = {
+      commandStr,
+      address,
+      port
+    }
+
+    // send vless greeting
+    this.client.send(new Uint8Array([version, 0]))
+
     const opts = {
-        address: this.address, 
-        port: this.port, 
-        payload: this.payload
-      }
+      address: address,
+      port: port,
+      client: this.client
+    }
 
-    if (this.command === 1) {
-      this.socket = new TCPSocket(opts)
-    } else if (this.command === 2) {
-      this.socket = new UDPSocket(opts)
+    switch (command) {
+      case 1:
+        this.currentSocket = this.tcpSocket.createSocket(opts)
+        break;
+      case 2:
+        this.currentSocket = this.udpSocket.createSocket(opts)
+        break;
     }
-    
-    if (this.socket) {
-      this.socket.relay(this.server)
-      this.started = true
-    }
+
+    this.sendToCurrentSocket(payload)
   }
-  
-  continue(payload) {
-    if (!this.socket) return
 
-    console.log(`[VLESS/CONTINUE] ${this.command === 1 ? 'TCP': this.command == 2 ? 'UDP':''} ${this.address} ${this.port}`)
-    this.socket.write(payload) 
+  sendToCurrentSocket(payload) {
+    this.logger.info(`Send packet (${payload ? payload.length : 0} bytes) to ${this.opts.address}:${this.opts.port} with ${this.opts.commandStr} socket`)
+    if (payload && payload.length > 0 || !this.opts.address) {
+      this.currentSocket.send(payload)
+    } else {
+      this.logger.warn(`Send packet to ${this.opts.address}:${this.opts.port} aborted`)
+    }
   }
 }

@@ -1,53 +1,42 @@
 import express from 'express'
 import { WebSocketServer } from 'ws'
 import { VLESS } from './core/vless.js';
+import { UDPSocket } from './services/udpSocket.js';
+import { TCPSocket } from './services/tcpSocket.js';
+import { createLogger } from './logger/log.js';
 
+const logger = createLogger({ scopes: ['main', 'server', 'vless', 'tcpSocket', 'udpSocket'] })
+
+const mainLogger = logger.getLogger('main')
 const PORT = process.env.PORT
 const app = express();
-const server = app.listen(PORT, () => console.log("[SERVER] Ready at port: " + PORT));
-const wss = new WebSocketServer({ server });
+const server = app.listen(PORT, () => mainLogger.info(`Server ready at port ${PORT}`));
+const wss = new WebSocketServer({ noServer: true });
 
-const main = () => {
-  wss.on('connection', (ws) => {
-    console.log('[WEBSOCKET] Incoming Request')
-    let vless = new VLESS(ws)
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (client) => {
+    wss.emit('connection', client, request)
+  })
+})
 
-    ws.on('message', (data) => {
-      console.log('[WEBSOCKET/DEBUG] Data received, length:', data.length);
-      console.log('[WEBSOCKET/DEBUG] Is Buffer?', Buffer.isBuffer(data));
-      
-      try {
-        if (!vless.started) {
-          vless.start(data)
-        } else {
-          vless.continue(data)
-        }
-      } catch (e) {
-        console.error('[WEBSOCKET/CRITICAL]:', err.message);
-      }
-    });
-    
-    ws.on('error', (error) => {
-      console.error('[WEBSOCKET/ERROR] ' + error.message)
-      ws.close()
-    })
+const tcpSocket = new TCPSocket(logger.getLogger('tcpSocket'))
+const udpSocket = new UDPSocket(logger.getLogger('udpSocket'))
+const wsLogger = logger.getLogger('server')
+wss.on('connection', (client) => {
+  wsLogger.info('Incoming new connection')
+
+  const vless = new VLESS(client, logger.getLogger('vless'), { tcpSocket, udpSocket })
+
+  client.on('message', (data) => {
+    vless.respond(data)
   });
-  
-  wss.on('error', (error) => {
-    console.error('[WEBSOCKET/ERROR] ' + error.message);
-  })
-}
 
-const root = async () => {
-  const execute = () => {
-    main()
-    console.log('[ROOT] Main started');
-  }
-  
-  process.on('uncaughtException', (err) => {
-    console.error('[ROOT] There was an uncaught error', err);
+  client.on('error', (error) => {
+    wsLogger.error(error.message)
+    client.close()
   })
-  execute()
-}
+});
 
-root()
+wss.on('error', (error) => {
+  wsLogger.error(error.message)
+})
