@@ -1,6 +1,6 @@
-import { parseVlessHeader } from "../utils/index.js"
+import { parseTrojanHeader } from "../utils/index.js"
 
-export class VLESS {
+export class TROJAN {
   constructor(logger) {
     this.logger = logger
   }
@@ -17,7 +17,7 @@ export class VLESS {
       }
       started = true
 
-      const { version, command, address, port, payload } = parseVlessHeader(data);
+      const { command, address, port, payload } = parseTrojanHeader(data);
       const commandStr = command === 1 ? 'TCP' : command == 2 ? 'UDP' : ''
       this.logger.info(`New request packet (${payload ? payload.length : 0} bytes) to ${address}:${port} with command ${command}`)
 
@@ -26,9 +26,6 @@ export class VLESS {
         address,
         port
       }
-
-      // send vless greeting
-      client.send(new Uint8Array([version, 0]))
 
       const socketOpts = {
         address: address,
