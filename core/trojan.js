@@ -18,7 +18,7 @@ export class TROJAN {
       started = true
 
       const { command, address, port, payload } = parseTrojanHeader(data);
-      const commandStr = command === 1 ? 'TCP' : command == 2 ? 'UDP' : ''
+      const commandStr = command === 1 ? 'TCP' : command == 3 ? 'UDP' : ''
       this.logger.info(`New request packet (${payload ? payload.length : 0} bytes) to ${address}:${port} with command ${command}`)
 
       opts = {
@@ -37,7 +37,7 @@ export class TROJAN {
         case 1:
           currentSocket = tcpSocket.createSocket(socketOpts)
           break;
-        case 2:
+        case 3:
           currentSocket = udpSocket.createSocket(socketOpts)
           break;
       }
