@@ -1,3 +1,4 @@
+import EventEmitter from 'events'
 import net from 'net'
 
 export class TCPSocket {
@@ -5,18 +6,20 @@ export class TCPSocket {
     this.logger = logger
   }
 
-  createSocket({ address, port, client }) {
+  createSocket({ address, port }) {
+    const emitter = new EventEmitter()
+
     const socket = net.connect(port, address, () => {
       this.logger.info(`Socket connected to ${address}:${port}`)
     })
 
     socket.on('data', (chunk) => {
-      this.logger.info(`Relay packet (${chunk.length} Bytes) from ${address}:${port} to client`)
-      client.send(chunk)
+      this.logger.info(`Emit packet (${chunk.length} Bytes) from ${address}:${port}`)
+      emitter.emit('packet', chunk)
     })
     socket.on('error', (error) => {
       this.logger.error(`Error from ${address}:${port}:  ${error.message}`)
-      client.close()
+      emitter.emit('error', error)
     })
 
     const send = (payload) => {
@@ -28,7 +31,8 @@ export class TCPSocket {
     }
 
     return {
-      send
+      send,
+      on: (e, c) => emitter.on(e, c)
     }
   }
 }

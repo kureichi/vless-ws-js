@@ -1,23 +1,18 @@
 import dgram from 'dgram'
+import EventEmitter from 'events'
 
 export class UDPSocket {
   constructor(logger) {
     this.logger = logger
   }
 
-  createSocket({ address, port, client }) {
+  createSocket({ address, port }) {
     const udpSocket = dgram.createSocket('udp4')
+    const emitter = new EventEmitter()
 
     udpSocket.on('message', (msgBin) => {
-      const msgLength = msgBin.length
-      const newArray = new Uint8Array(2 + msgLength)
-
-      newArray[0] = ((msgLength >> 8) & 0xff)
-      newArray[1] = msgLength & 0xff
-      newArray.set(new Uint8Array(msgBin), 2)
-
-      this.logger.info(`Relay packet (${newArray.length} bytes) from ${address}:${port} from client`)
-      client.send(newArray)
+      this.logger.info(`Emit packet (${msgBin.length} bytes) from ${address}:${port}`)
+      emitter.emit('packet', msgBin)
     })
 
     const send = (payload) => {
@@ -28,7 +23,8 @@ export class UDPSocket {
     this.logger.info(`Socket created`)
 
     return {
-      send
+      send,
+      on: (e, c) => emitter.on(e, c)
     }
   }
 }
