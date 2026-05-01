@@ -39,9 +39,22 @@ export class VLESS {
       switch (command) {
         case 1:
           currentSocket = tcpSocket.createSocket(socketOpts)
+          currentSocket.on('packet', (packet) => {
+            this.logger.info(`Relay packet (${packet.length} bytes) from TCP socket to client`)
+            client.send(packet)
+          })
           break;
         case 2:
           currentSocket = udpSocket.createSocket(socketOpts)
+          currentSocket.on('packet', (packet) => {
+            const packetLength = packet.length
+            const header = Buffer.alloc(2)
+            header.writeUint16BE(packetLength)
+            const newPacket = Buffer.concat([header, packet])
+
+            this.logger.info(`Relay packet (${newPacket.length} bytes) from UDP socket to client`)
+            client.send(newPacket)
+          })
           break;
       }
 
