@@ -35,6 +35,7 @@ wss.on('connection', (client) => {
   const proxy = proxyInstance.createProxy(client, { tcpSocket, udpSocket })
 
   client.on('message', (data) => {
+    wsLogger.info(`Request packet (${data.length} bytes)`)
     proxy.respond(data)
   });
 
