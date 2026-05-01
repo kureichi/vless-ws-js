@@ -19,13 +19,12 @@ export class TCPSocket {
     })
     socket.on('error', (error) => {
       this.logger.error(`Error from ${address}:${port}:  ${error.message}`)
-      emitter.emit('error', error)
     })
 
     const send = (payload) => {
       this.logger.info(`Send packet (${payload.length} Bytes) to ${address}:${port}`)
 
-      if (payload?.length) {
+      if (payload?.length && socket) {
         socket.write(payload)
       }
     }
