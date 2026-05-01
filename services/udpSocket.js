@@ -15,6 +15,10 @@ export class UDPSocket {
       emitter.emit('packet', msgBin)
     })
 
+    udpSocket.on('error', (e) => {
+      this.logger.error(`Error from ${address}: ${e.message}`);
+    })
+
     const send = (payload) => {
       this.logger.info(`Send packet (${payload.length} bytes) to ${address}:${port}`)
       udpSocket.send(payload, port, address)
