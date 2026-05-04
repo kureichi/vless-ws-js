@@ -21,6 +21,7 @@ jobs:
           node-version: 24
 
       - name: Generate Changelog and Version
+        id: run_script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
