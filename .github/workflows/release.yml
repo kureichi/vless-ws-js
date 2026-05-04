@@ -1,0 +1,38 @@
+name: Release Workflow
+permissions:
+  contents: write
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release Job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Generate Changelog and Version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          BRANCH: ${{ github.ref_name }}
+        working-directory: ${{ github.workspace }}/scripts/semver-gen
+        run: |
+          npm install
+
+          node index.js -t
+          node index.js -c > ${{ github.workspace }}/CHANGELOG.md
+
+      - name: Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.run_script.outputs.next_tag }}
+          body_path: ${{ github.workspace }}/CHANGELOG.md
